@@ -1,0 +1,14 @@
+# git ignore file
+*/bin
+*/obj
+bin/
+obj/
+/packages
+*.dotCover
+*.user
+*.suo
+*ncrunch*
+*crunchsolution*
+_Resharper.*
+*.mdf
+*.ldf
