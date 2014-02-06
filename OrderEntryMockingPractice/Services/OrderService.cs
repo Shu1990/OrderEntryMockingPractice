@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using OrderEntryMockingPractice.Models;
 
 namespace OrderEntryMockingPractice.Services
@@ -25,15 +26,13 @@ namespace OrderEntryMockingPractice.Services
 
         public OrderSummary PlaceOrder(Order order)
         {
-            if (!AllItemsInStock(order))
-            {
-                throw new Exception("Not all in Stock");
-            }
+            if (!AllItemsInStock(order)) { throw new Exception("Not all in Stock"); }
+            if (!AllItemsInUnique(order)) { throw new Exception("Items are not unique"); }
 
             var orderConfirmation = _orderFulfillmentService.Fulfill(order);
             var customer = _customerRepository.Get((int) order.CustomerId);
             var taxRates = _taxRateService.GetTaxEntries(customer.PostalCode, customer.Country);
-            var netTotal = SumNetTotal(order);
+            var netTotal = CalculateNetTotal(order);
             var totalTaxes = SumTaxes(taxRates, netTotal);
             var orderTotal = netTotal - totalTaxes;
             var orderSummary = new OrderSummary()
@@ -50,6 +49,22 @@ namespace OrderEntryMockingPractice.Services
             return orderSummary;
         }
 
+        private bool AllItemsInUnique(Order order)
+        {
+            var dictionary = new Dictionary<Product, OrderItem>();
+
+            foreach (var orderItem in order.OrderItems)
+            {
+                if (dictionary.ContainsKey(orderItem.Product))
+                {
+                    return false;
+                } 
+                dictionary.Add(orderItem.Product, orderItem);
+            }
+
+            return true;
+        }
+
         private double SumTaxes(IEnumerable<TaxEntry> taxRates, double netTotal)
         {
             var totalTaxes = 0.0;
@@ -62,7 +77,7 @@ namespace OrderEntryMockingPractice.Services
             return totalTaxes;
         }
 
-        private double SumNetTotal(Order order)
+        private double CalculateNetTotal(Order order)
         {
             var netTotal = 0.00;
             foreach (var orderItem in order.OrderItems)
