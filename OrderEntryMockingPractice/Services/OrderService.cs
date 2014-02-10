@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.Serialization;
 using OrderEntryMockingPractice.Models;
 
 namespace OrderEntryMockingPractice.Services
@@ -26,8 +27,8 @@ namespace OrderEntryMockingPractice.Services
 
         public OrderSummary PlaceOrder(Order order)
         {
-            if (!AllItemsInStock(order)) { throw new Exception("Not all in Stock"); }
-            if (!AllItemsInUnique(order)) { throw new Exception("Items are not unique"); }
+            if (!AllItemsInStock(order)) { throw new OrderValidationException("Not all in Stock"); }
+            if (!order.OrderHasAllUniqueProducts()) { throw new OrderValidationException("Items are not unique"); }
 
             var orderConfirmation = _orderFulfillmentService.Fulfill(order);
             var customer = _customerRepository.Get((int) order.CustomerId);
@@ -49,22 +50,6 @@ namespace OrderEntryMockingPractice.Services
             return orderSummary;
         }
 
-        private bool AllItemsInUnique(Order order)
-        {
-            var dictionary = new Dictionary<Product, OrderItem>();
-
-            foreach (var orderItem in order.OrderItems)
-            {
-                if (dictionary.ContainsKey(orderItem.Product))
-                {
-                    return false;
-                } 
-                dictionary.Add(orderItem.Product, orderItem);
-            }
-
-            return true;
-        }
-
         private double SumTaxes(IEnumerable<TaxEntry> taxRates, double netTotal)
         {
             var totalTaxes = 0.0;
@@ -79,15 +64,11 @@ namespace OrderEntryMockingPractice.Services
 
         private double CalculateNetTotal(Order order)
         {
-            var netTotal = 0.00;
-            foreach (var orderItem in order.OrderItems)
-            {
-                var quantity = (double)orderItem.Quantity;
-                var unitPrice = (double)orderItem.Product.Price;
-                netTotal += quantity * unitPrice;
-            }
-
-            return netTotal;
+            return (
+                from orderItem in order.OrderItems 
+                let quantity = (double) orderItem.Quantity 
+                let unitPrice = (double) orderItem.Product.Price 
+                select quantity*unitPrice).Sum();
         }
 
 
@@ -101,6 +82,23 @@ namespace OrderEntryMockingPractice.Services
                 }
             }
             return true;
+        }
+    }
+
+
+    [Serializable]
+    public class OrderValidationException : Exception
+    {
+        //
+        // For guidelines regarding the creation of new exception types, see
+        //    http://msdn.microsoft.com/library/default.asp?url=/library/en-us/cpgenref/html/cpconerrorraisinghandlingguidelines.asp
+        // and
+        //    http://msdn.microsoft.com/library/default.asp?url=/library/en-us/dncscol/html/csharp07192001.asp
+        //
+
+        public OrderValidationException(string message) : base(message)
+        {
+
         }
     }
 }

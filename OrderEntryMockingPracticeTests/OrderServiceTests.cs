@@ -56,7 +56,9 @@ namespace OrderEntryMockingPracticeTests
         public void PlaceOrder_AllItemsAreUnique_NoExceptionThrown()
         {
             //arrange
-            StubProductRepositoryAllItemsInStock(_order, true);
+
+            const bool allItemsInStock = true;
+            StubProductRepositoryAllItemsInStock(_order, valid: allItemsInStock);
 
             //act //Assert
             Assert.DoesNotThrow(() => _orderService.PlaceOrder(_order));
@@ -67,7 +69,8 @@ namespace OrderEntryMockingPracticeTests
         public void PlaceOrder_AllItemsAreNotUnique_ThrowsException()
         {
             //arrange
-            StubProductRepositoryAllItemsInStock(_order, true);
+            const bool allItemsInStock = true;
+            StubProductRepositoryAllItemsInStock(_order, allItemsInStock);
 
             //set each orderItem to contain the same product
             var theSameProduct = new Product() {Sku = "Item1", Price = (decimal) 1.11};
@@ -77,7 +80,7 @@ namespace OrderEntryMockingPracticeTests
             }
 
             //act //assert
-            Assert.Throws<Exception>(() => _orderService.PlaceOrder(_order));
+            Assert.Throws<OrderValidationException>(() => _orderService.PlaceOrder(_order));
         }
 
 
@@ -85,7 +88,8 @@ namespace OrderEntryMockingPracticeTests
         public void PlaceOrder_AllItemsInStock_NoExceptionThrown()
         {
             //arrange
-            StubProductRepositoryAllItemsInStock(_order, true);
+            const bool allItemsInStock = true;
+            StubProductRepositoryAllItemsInStock(_order, allItemsInStock);
 
             //act //assert
             Assert.DoesNotThrow(() => _orderService.PlaceOrder(_order));
@@ -96,10 +100,11 @@ namespace OrderEntryMockingPracticeTests
         public void PLaceOrder_AllItemsNotInStock_ThrowsException()
         {
             //arrange
-            StubProductRepositoryAllItemsInStock(_order, false);
+            const bool allItemsInStock = false;
+            StubProductRepositoryAllItemsInStock(_order, allItemsInStock);
 
             //act //assert
-            Assert.Throws<Exception>(() => _orderService.PlaceOrder(_order));
+            Assert.Throws<OrderValidationException>(() => _orderService.PlaceOrder(_order));
         }
         
 
@@ -107,7 +112,8 @@ namespace OrderEntryMockingPracticeTests
         public void PlaceOrder_ValidOrder_OrderSummaryIsReturned_SubmittedToOrderFulfillmentService()
         {
             //arrange
-            StubProductRepositoryAllItemsInStock(_order, true);
+            const bool allItemsInStock = true;
+            StubProductRepositoryAllItemsInStock(_order, allItemsInStock);
 
             //act
             var orderSummary = _orderService.PlaceOrder(_order);
@@ -121,13 +127,14 @@ namespace OrderEntryMockingPracticeTests
         public void PlaceOrder_ValidOrder_OrderSummaryIsReturned_OrderFulfillmentConfirmationNumberContained()
         {
             //arrange
-            StubProductRepositoryAllItemsInStock(_order, true);
+            const bool allItemsInStock = true;
+            StubProductRepositoryAllItemsInStock(_order, allItemsInStock);
 
             //act
             var orderSummary = _orderService.PlaceOrder(_order);
 
             //assert
-            Assert.That(ExpectedOrderConfirmationNumber, Is.EqualTo(orderSummary.OrderNumber));
+            Assert.That(orderSummary.OrderNumber, Is.EqualTo(ExpectedOrderConfirmationNumber));
         }
 
 
@@ -135,13 +142,14 @@ namespace OrderEntryMockingPracticeTests
         public void PlaceOrder_ValidOrder_OrderSummaryIsReturned_OrderFulfillmentOrderIDContained()
         {
             //arrange
-            StubProductRepositoryAllItemsInStock(_order, true);
+            const bool allItemsInStock = true;
+            StubProductRepositoryAllItemsInStock(_order, allItemsInStock);
 
             //act
             var orderSummary = _orderService.PlaceOrder(_order);
 
             //assert
-            Assert.That(ExpectedOrderId, Is.EqualTo(orderSummary.OrderId));
+            Assert.That(orderSummary.OrderId, Is.EqualTo(ExpectedOrderId));
         }
         
         
@@ -149,13 +157,14 @@ namespace OrderEntryMockingPracticeTests
         public void PlaceOrder_ValidOrder_OrderSummaryIsReturned_ApplicableCustomerTaxesContained()
         {
             //arrange
-            StubProductRepositoryAllItemsInStock(_order, true);
+            const bool allItemsInStock = true;
+            StubProductRepositoryAllItemsInStock(_order, allItemsInStock);
 
             //act
             var orderSummary = _orderService.PlaceOrder(_order);
 
             //assert
-            Assert.That(_taxEntryList, Is.EqualTo(orderSummary.Taxes));
+            Assert.That(orderSummary.Taxes, Is.EqualTo(_taxEntryList));
         }
         
 
@@ -163,9 +172,10 @@ namespace OrderEntryMockingPracticeTests
         public void PlaceOrder_ValidOrder_OrderSummaryIsReturned_NetTotalContained()
         {
             //arrange
-            StubProductRepositoryAllItemsInStock(_order, true);
+            const bool allItemsInStock = true;
+            StubProductRepositoryAllItemsInStock(_order, allItemsInStock);
 
-            var expectedNetTotal = CalculatedExpectedNetTotal(_order);
+            var expectedNetTotal = _order.CalculatedExpectedNetTotal();
 
             //act
             var orderSummary = _orderService.PlaceOrder(_order);
@@ -179,9 +189,10 @@ namespace OrderEntryMockingPracticeTests
         public void PlaceOrder_ValidOrder_OrderSummaryIsReturned_OrderTotalContained()
         {
             //arrange
-            StubProductRepositoryAllItemsInStock(_order, true);
+            const bool allItemsInStock = true;
+            StubProductRepositoryAllItemsInStock(_order, allItemsInStock);
 
-            var expectedNetTotal = CalculatedExpectedNetTotal(_order);
+            var expectedNetTotal = _order.CalculatedExpectedNetTotal();
 
             var expectedTotalTaxes = 0.0;
             foreach (var taxEntry in _taxEntryList)
@@ -204,7 +215,8 @@ namespace OrderEntryMockingPracticeTests
         public void PlaceOrder_ValidOrder_EmailIsSentToCustomer()
         {
             //arrange
-            StubProductRepositoryAllItemsInStock(_order, true);
+            const bool allItemsInStock = true;
+            StubProductRepositoryAllItemsInStock(_order, allItemsInStock);
 
             //act
             var orderSummary = _orderService.PlaceOrder(_order);
@@ -216,17 +228,6 @@ namespace OrderEntryMockingPracticeTests
 //Tests above
 //Methods below
 
-        private static double CalculatedExpectedNetTotal(Order order)
-        {
-            var expectedNetTotal = 0.00;
-            foreach (var orderItem in order.OrderItems)
-            {
-                var quantity = (double) orderItem.Quantity;
-                var unitPrice = (double) orderItem.Product.Price;
-                expectedNetTotal += quantity*unitPrice;
-            }
-            return expectedNetTotal;
-        }
 
         private Customer CreateCustomer()
         {
